@@ -1,6 +1,35 @@
-/* ============================================================
-   app.js  —  Main SPA Logic
-   ============================================================ */
+/* ── preserveQueryParams ─────────────────────────────────── */
+// Reads ?id= and ?sync from current URL.
+// For SPA hash-navigation, rewrites the href to carry those params forward.
+// Usage: call from onclick on every nav link.
+function preserveQueryParams(link) {
+    const currentParams = new URLSearchParams(window.location.search);
+    const id = currentParams.get('id');
+    const isSync = window.location.href.includes('sync');
+
+    if (id || isSync) {
+        const href = link.getAttribute('href');
+        // href is a hash like "#forms" — reconstruct full URL with params
+        const page = href.replace('#', '');
+        const newUrl = new URL(window.location.href);
+        if (id) newUrl.searchParams.set('id', id);
+        if (isSync) newUrl.searchParams.set('sync', '');
+        newUrl.hash = page;
+        window.location.href = newUrl.toString();
+        return false;
+    }
+    return true; // no params to preserve, let default hash nav happen
+}
+
+/* ── changeFieldId ───────────────────────────────────────── */
+// Appends a random suffix to the field's id on change.
+function changeFieldId(field) {
+    var suffix = Math.floor(Math.random() * 1000);
+    field.id = field.id + '_' + suffix;
+    console.log('[changeFieldId] New id:', field.id, '| name stays:', field.name);
+    var display = document.getElementById('dynamic-id-display');
+    if (display) display.textContent = 'Current ID: ' + field.id;
+}
 
 /* ── SPA Router ──────────────────────────────────────────── */
 function navigate(page) {
@@ -11,7 +40,12 @@ function navigate(page) {
     const link = document.querySelector(`.nav-link[data-page="${page}"]`);
     if (link) link.classList.add('active');
     document.getElementById('current-page-name').textContent = page;
-    window.location.hash = page;
+
+    // Update URL: preserve existing query params + update hash
+    const currentParams = new URLSearchParams(window.location.search);
+    const newUrl = window.location.pathname + (currentParams.toString() ? '?' + currentParams.toString() : '') + '#' + page;
+    window.history.pushState({ page }, 'VWO QA TestBed – ' + page, newUrl);
+
     // Trigger page-specific init
     if (page === 'shadow') setupShadowDOMs();
     if (page === 'canvas') initCanvases();
